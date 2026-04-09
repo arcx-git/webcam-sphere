@@ -1,134 +1,136 @@
 # Logitech Sphere Controller
 
-macOS에서 Logitech QuickCam Sphere (046d:0994)의 **팬/틸트 모터**를 제어하는 GUI 앱.
+A macOS GUI app that controls the **pan/tilt motor** of the Logitech QuickCam Sphere (USB `046d:0994`).
 
-## 기능
+## Features
 
-- 상/하/좌/우 팬/틸트 제어 (D-pad 버튼 + 키보드 방향키)
-- 버튼 누르고 있으면 연속 이동 (C 네이티브 스레드, 30ms 간격)
-- 스텝 크기 조절 (2°~10°)
-- Reset으로 중앙 복귀 (Space / R 키)
-- 앱 버전 및 빌드 날짜 표시
-- 웹캠 렌즈 스타일 앱 아이콘
+- Up/Down/Left/Right pan/tilt control (D-pad buttons + keyboard arrow keys)
+- Continuous movement while a button is held (native C thread, 30 ms tick)
+- Adjustable step size (2°–10°)
+- Reset to center (Space / R key)
+- App version and build date display
+- Webcam-lens style app icon
 
-## 요구사항
+## Requirements
 
-- macOS (IOKit 기반 USB 제어)
-- Logitech QuickCam Sphere (USB VID:PID 046d:0994)
-- Python 3.12+, uv
+- macOS (IOKit-based USB control)
+- Logitech QuickCam Sphere (USB VID:PID `046d:0994`)
+- Python 3.12+, [uv](https://github.com/astral-sh/uv)
 - Xcode Command Line Tools (`clang`)
 
-## 설치 및 빌드
+## Install & Build
 
 ```bash
-# 1. 의존성 설치
+# 1. Install Python dependencies
 uv sync
 
-# 2. 모터 제어 바이너리 빌드
+# 2. Build the native motor control binary
 clang -framework Foundation -framework IOKit -framework AppKit -fno-objc-arc -lpthread \
   uvc-util/src/UVCController.m uvc-util/src/UVCType.m uvc-util/src/UVCValue.m \
   motor_final.m -o motor_final -I uvc-util/src
 
-# 3. 실행 (개발 모드)
+# 3. Run (development mode)
 uv run python sphere_controller.py
 
-# 4. 독립 실행 앱 빌드 (.app)
+# 4. Build a standalone .app
 BUILD_DATE=$(date +%Y-%m-%d) uv run pyinstaller \
   --name "Sphere Controller" --onefile --windowed \
   --add-binary "motor_final:." --icon icon.icns \
   --noconfirm sphere_controller.py
 rm -rf build "Sphere Controller.spec"
-# -> dist/Sphere Controller.app 생성
+# -> dist/Sphere Controller.app
 ```
 
-## 사용법
+## Usage
 
-### GUI 버튼
-| 버튼 | 동작 |
-|------|------|
-| Up (초록) | 틸트 위 |
-| Down (초록) | 틸트 아래 |
-| Left (파랑) | 팬 왼쪽 |
-| Right (파랑) | 팬 오른쪽 |
-| Reset (빨강) | 중앙 복귀 |
+### GUI buttons
+| Button | Action |
+|--------|--------|
+| Up (green) | Tilt up |
+| Down (green) | Tilt down |
+| Left (blue) | Pan left |
+| Right (blue) | Pan right |
+| Reset (red) | Return to center |
 
-### 키보드
-| 키 | 동작 |
-|----|------|
-| 방향키 | 팬/틸트 (누르고 있으면 연속 이동) |
-| Space / R | Reset (중앙 복귀) |
+### Keyboard
+| Key | Action |
+|-----|--------|
+| Arrow keys | Pan/tilt (hold for continuous movement) |
+| Space / R | Reset (return to center) |
 
-### CLI (motor_final 직접 사용)
+### CLI (direct `motor_final`)
 ```bash
-./motor_final right 5     # 오른쪽 5도
-./motor_final left 10     # 왼쪽 10도
-./motor_final up 3        # 위 3도
-./motor_final down 3      # 아래 3도
-./motor_final reset       # 중앙 복귀
-./motor_final --daemon    # 데몬 모드 (GUI에서 사용)
+./motor_final right 5     # right 5 degrees
+./motor_final left 10     # left 10 degrees
+./motor_final up 3        # up 3 degrees
+./motor_final down 3      # down 3 degrees
+./motor_final reset       # center
+./motor_final --daemon    # daemon mode (used by the GUI)
 ```
 
-## 프로젝트 구조
+## Project structure
 
 ```
-sphere_controller.py   # GUI 앱 (PySide6)
-motor_final.m          # 모터 제어 소스 (Objective-C, IOKit)
-motor_final            # 빌드된 모터 제어 바이너리
-uvc-util/              # UVC 컨트롤러 라이브러리 (jtfrey/uvc-util)
-icon.png               # 앱 아이콘 (512x512 웹캠 렌즈)
-icon.icns              # macOS용 앱 아이콘
-pyproject.toml         # Python 의존성 (PySide6, PyInstaller)
-dist/                  # 빌드된 .app
+sphere_controller.py   # GUI app (PySide6)
+motor_final.m          # Motor control source (Objective-C, IOKit)
+motor_final            # Built motor control binary (gitignored)
+uvc-util/              # UVC controller library (jtfrey/uvc-util, bundled)
+icon.png               # App icon (512x512 webcam lens)
+icon.icns              # macOS app icon
+pyproject.toml         # Python dependencies (PySide6, PyInstaller)
+dist/                  # Built .app
 ```
 
-## 기술 상세
+## Technical details
 
-### UVC Extension Unit 프로토콜
+### UVC Extension Unit protocol
 
-Logitech Sphere는 표준 UVC PTZ가 아닌 **벤더 전용 Extension Unit**으로 모터를 제어한다.
+The Logitech Sphere does not expose standard UVC PTZ; instead, it uses a
+vendor-specific **Extension Unit** for motor control.
 
-| 항목 | 값 |
-|------|-----|
+| Item | Value |
+|------|-------|
 | GUID | `{63610682-5070-49ab-b8cc-b3855e8d2256}` |
 | Unit ID | 9 |
-| Selector 1 | Pan/Tilt Relative (4바이트, signed int16 LE x2) |
-| Selector 2 | Pan/Tilt Reset (1바이트, 0x03=양쪽 리셋) |
-| Selector 3 | Focus Motor (6바이트) |
-| 단위 | 64 = 1도 |
+| Selector 1 | Pan/Tilt Relative (4 bytes, signed int16 LE × 2) |
+| Selector 2 | Pan/Tilt Reset (1 byte, `0x03` = both axes) |
+| Selector 3 | Focus Motor (6 bytes) |
+| Unit | 64 = 1 degree |
 
-### 아키텍처
+### Architecture
 
 ```
 [GUI (Python/PySide6)]
     |  stdin pipe (move/stop/reset)
     v
 [motor_final --daemon (Objective-C)]
-    |  C pthread (30ms tick)
+    |  C pthread (30 ms tick)
     v
-[IOKit USB Control Transfer]
+[IOKit USB control transfer]
     |  UVC Extension Unit (Unit 9, Selector 1)
     v
-[Logitech Sphere Motor]
+[Logitech Sphere motor]
 ```
 
-- GUI는 `move <pan> <tilt>` / `stop` 명령만 파이프로 전송
-- C 데몬 내부 스레드가 30ms 간격으로 USB 명령을 반복 전송하여 부드러운 이동 구현
-- 프로세스 재시작 오버헤드 없음 (상주 데몬)
+- The GUI only sends `move <pan> <tilt>` / `stop` commands over a pipe.
+- A pthread inside the C daemon repeats the USB command every 30 ms for smooth motion.
+- No per-step process startup overhead (persistent daemon).
 
-## 라이선스
+## License
 
-본 프로젝트는 [MIT License](LICENSE)로 배포된다.
+This project is released under the [MIT License](LICENSE).
 
-### 서드파티 컴포넌트
+### Third-party components
 
-| 컴포넌트 | 라이선스 | 용도 |
-|---------|---------|------|
-| [PySide6](https://doc.qt.io/qtforpython-6/) | LGPLv3 | GUI 프레임워크 |
-| [Qt 6](https://www.qt.io/) | LGPLv3 | PySide6 기반 라이브러리 |
-| [PyInstaller](https://pyinstaller.org/) | GPL-2.0 + bootloader exception | 앱 패키징 |
-| [uvc-util](https://github.com/jtfrey/uvc-util) | MIT | UVC 컨트롤러 라이브러리 (번들) |
+| Component | License | Purpose |
+|-----------|---------|---------|
+| [PySide6](https://doc.qt.io/qtforpython-6/) | LGPLv3 | GUI framework |
+| [Qt 6](https://www.qt.io/) | LGPLv3 | Underlying library behind PySide6 |
+| [PyInstaller](https://pyinstaller.org/) | GPL-2.0 + bootloader exception | App packaging |
+| [uvc-util](https://github.com/jtfrey/uvc-util) | MIT | UVC controller library (bundled) |
 
-전체 고지 및 원문은 [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) 참조.
+Full notices and license texts are available in [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md).
 
-> "Logitech" 및 "Logitech Sphere"는 Logitech International S.A.의 상표이며,
-> 본 프로젝트는 Logitech과 무관한 비공식 호환 도구이다.
+> "Logitech" and "Logitech Sphere" are trademarks of Logitech International S.A.
+> This project is an unofficial compatibility tool and is not affiliated with
+> or endorsed by Logitech.
