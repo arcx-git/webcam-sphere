@@ -1,0 +1,11 @@
+[project]
+name = "webcam-sphere"
+version = "0.1.0"
+description = "Logitech Sphere Pan/Tilt Controller GUI (macOS)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+dependencies = [
+    "pyinstaller>=6.19.0",
+    "pyside6>=6.11.0",
+]
